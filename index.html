@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知識の地図 - See Your Reading</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --panel-bg: rgba(25, 28, 36, 0.7);
+            --text-color: #c5c6c7;
+            --primary-color: #66fcf1;
+            --secondary-color: #45a29e;
+            --book-color: #8b5cf6; /* 紫系 */
+            --keyword-color: #3b82f6; /* 青系 */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 50%, #1a1e29 0%, #0b0c10 100%);
+            color: var(--text-color);
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 320px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #fff;
+            margin-bottom: 8px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        p.desc {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 6px;
+            color: #ddd;
+        }
+
+        input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 8px rgba(102, 252, 241, 0.3);
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        button {
+            width: 100%;
+            background: linear-gradient(135deg, var(--book-color), var(--keyword-color));
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 8px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* D3.js グラフのスタイル */
+        .node circle {
+            stroke: #fff;
+            stroke-width: 1.5px;
+            transition: all 0.3s ease;
+        }
+
+        .node text {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            pointer-events: none;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+            fill: #fff;
+        }
+
+        .link {
+            stroke: rgba(255, 255, 255, 0.2);
+            stroke-opacity: 0.6;
+        }
+
+        /* 凡例 */
+        .legend {
+            margin-top: 24px;
+            font-size: 0.8rem;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .legend-book { background-color: var(--book-color); box-shadow: 0 0 8px var(--book-color); }
+        .legend-keyword { background-color: var(--keyword-color); box-shadow: 0 0 8px var(--keyword-color); }
+    </style>
+</head>
+<body>
+
+    <div id="ui-container">
+        <h1>知識の地図</h1>
+        <p class="desc">読んだ本とキーワードをつなぎ、<br>思考の広がりを可視化します。</p>
+
+        <form id="add-form">
+            <div class="form-group">
+                <label for="book-title">本のタイトル (既存の本を選ぶとキーワードを追加)</label>
+                <input type="text" id="book-title" list="book-list" placeholder="例: サピエンス全史" required autocomplete="off">
+                <datalist id="book-list"></datalist>
+            </div>
+            <div class="form-group">
+                <label for="keywords">キーワード（カンマ区切り）</label>
+                <input type="text" id="keywords" placeholder="例: 歴史, 人類, 認知革命" required autocomplete="off">
+            </div>
+            <button type="submit">本・キーワードを追加</button>
+        </form>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color legend-book"></div>
+                <span>本 (Book)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color legend-keyword"></div>
+                <span>キーワード (Keyword)</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script>
+        // データ構造
+        const nodes = [];
+        const links = [];
+
+        // 初期データ（デモ用）
+        const initialData = [
+            { title: "サピエンス全史", keywords: ["歴史", "人類", "認知革命"] },
+            { title: "銃・病原菌・鉄", keywords: ["歴史", "地理", "文明"] },
+            { title: "利己的な遺伝子", keywords: ["進化", "生物学", "人類"] }
+        ];
+
+        // グラフ設定
+        const container = document.getElementById('canvas-container');
+        let width = container.clientWidth;
+        let height = container.clientHeight;
+
+        const svg = d3.select("#canvas-container").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        // コンテナグループ（ズーム/パン用）
+        const g = svg.append("g");
+
+        // ズーム機能
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on("zoom", (event) => {
+                g.attr("transform", event.transform);
+            });
+        svg.call(zoom);
+
+        // シミュレーション設定（ふわふわ動く）
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id).distance(100))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collide", d3.forceCollide().radius(d => d.radius + 5).iterations(2))
+            // 常に微弱な動きを維持するための設定
+            .alphaDecay(0.01) 
+            .velocityDecay(0.6);
+
+        let linkGroup = g.append("g").attr("class", "links");
+        let nodeGroup = g.append("g").attr("class", "nodes");
+
+        // 描画更新関数
+        function updateGraph() {
+            // リンクの更新
+            const linkSelection = linkGroup.selectAll("line").data(links);
+            
+            const linkEnter = linkSelection.enter().append("line")
+                .attr("class", "link")
+                .style("stroke-width", d => Math.sqrt(d.value || 1));
+
+            linkSelection.exit().remove();
+            const link = linkEnter.merge(linkSelection);
+
+            // ノードの更新
+            const nodeSelection = nodeGroup.selectAll(".node").data(nodes, d => d.id);
+            
+            const nodeEnter = nodeSelection.enter().append("g")
+                .attr("class", "node")
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+
+            // ノードの円
+            nodeEnter.append("circle")
+                .attr("r", d => d.radius)
+                .attr("fill", d => d.type === "book" ? "#8b5cf6" : "#3b82f6")
+                .style("filter", d => `drop-shadow(0 0 10px ${d.type === "book" ? "rgba(139, 92, 246, 0.8)" : "rgba(59, 130, 246, 0.8)"})`);
+
+            // ノードのテキスト
+            nodeEnter.append("text")
+                .attr("dx", 0)
+                .attr("dy", d => d.radius + 15)
+                .attr("text-anchor", "middle")
+                .text(d => d.label)
+                .style("font-size", d => d.type === "book" ? "14px" : "12px")
+                .style("font-weight", d => d.type === "book" ? "600" : "400");
+
+            nodeSelection.exit().remove();
+            const node = nodeEnter.merge(nodeSelection);
+
+            // シミュレーションの更新
+            simulation.nodes(nodes).on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
+            });
+
+            simulation.force("link").links(links);
+            simulation.alpha(1).restart();
+        }
+
+        // ドラッグイベントハンドラ
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0.05);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // 既存の本のリストを更新する関数
+        function updateBookList() {
+            const dataList = document.getElementById('book-list');
+            dataList.innerHTML = '';
+            nodes.filter(n => n.type === 'book').forEach(book => {
+                const option = document.createElement('option');
+                option.value = book.label;
+                dataList.appendChild(option);
+            });
+        }
+
+        // データ追加処理
+        function addData(title, keywordsStr) {
+            const keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k !== "");
+            
+            if (keywords.length === 0) return;
+
+            // 本ノードの追加または取得
+            let bookNode = nodes.find(n => n.id === "book-" + title);
+            if (!bookNode) {
+                bookNode = { 
+                    id: "book-" + title, 
+                    label: title, 
+                    type: "book", 
+                    radius: 20,
+                    // 初期位置を中央付近からランダムに
+                    x: width / 2 + (Math.random() - 0.5) * 100,
+                    y: height / 2 + (Math.random() - 0.5) * 100
+                };
+                nodes.push(bookNode);
+                updateBookList(); // 本のリストを更新
+            }
+
+            keywords.forEach(kw => {
+                // キーワードノードの追加または取得
+                let kwNode = nodes.find(n => n.id === "kw-" + kw);
+                if (!kwNode) {
+                    kwNode = { 
+                        id: "kw-" + kw, 
+                        label: kw, 
+                        type: "keyword", 
+                        radius: 12,
+                        x: width / 2 + (Math.random() - 0.5) * 100,
+                        y: height / 2 + (Math.random() - 0.5) * 100
+                    };
+                    nodes.push(kwNode);
+                }
+
+                // リンクの追加
+                const linkExists = links.find(l => 
+                    (l.source.id === bookNode.id && l.target.id === kwNode.id) ||
+                    (l.source === bookNode.id && l.target === kwNode.id)
+                );
+                
+                if (!linkExists) {
+                    links.push({ source: bookNode.id, target: kwNode.id, value: 1 });
+                }
+            });
+
+            updateGraph();
+        }
+
+        // フォーム送信イベント
+        document.getElementById('add-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const titleInput = document.getElementById('book-title');
+            const keywordsInput = document.getElementById('keywords');
+            
+            addData(titleInput.value, keywordsInput.value);
+            
+            titleInput.value = '';
+            keywordsInput.value = '';
+            titleInput.focus();
+        });
+
+        // ウィンドウリサイズ対応
+        window.addEventListener('resize', () => {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            svg.attr("width", width).attr("height", height);
+            simulation.force("center", d3.forceCenter(width / 2, height / 2));
+            simulation.alpha(0.3).restart();
+        });
+
+        // 初期データの読み込み
+        initialData.forEach(data => {
+            addData(data.title, data.keywords.join(', '));
+        });
+
+        // ふわふわ感を強調するための定期的な微力追加
+        setInterval(() => {
+            nodes.forEach(node => {
+                node.vx += (Math.random() - 0.5) * 0.5;
+                node.vy += (Math.random() - 0.5) * 0.5;
+            });
+            simulation.alpha(0.1).restart();
+        }, 3000);
+
+    </script>
+</body>
+</html>
