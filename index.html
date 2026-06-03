@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>知識の地図 - See Your Reading</title>
+    <title>知識の地図 v2 - See Your Reading</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;600&display=swap" rel="stylesheet">
     <style>
@@ -15,6 +15,8 @@
             --secondary-color: #45a29e;
             --book-color: #8b5cf6; /* 紫系 */
             --keyword-color: #3b82f6; /* 青系 */
+            --highlight-book: #d946ef; /* 強いピンク紫 */
+            --highlight-kw: #60a5fa; /* 強い青 */
         }
 
         * {
@@ -45,8 +47,22 @@
             border-radius: 16px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             width: 320px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
             transition: all 0.3s ease;
+            scrollbar-width: thin;
+        }
+
+        #ui-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        #ui-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #ui-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
         }
 
         h1 {
@@ -57,11 +73,24 @@
             letter-spacing: 0.05em;
         }
 
+        h2 {
+            font-size: 1.1rem;
+            color: #fff;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
         p.desc {
             font-size: 0.85rem;
             color: #aaa;
             margin-bottom: 20px;
             line-height: 1.4;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin: 24px 0;
         }
 
         .form-group {
@@ -75,7 +104,7 @@
             color: #ddd;
         }
 
-        input {
+        input, textarea {
             width: 100%;
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -88,12 +117,17 @@
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
-        input:focus {
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        input:focus, textarea:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 8px rgba(102, 252, 241, 0.3);
         }
 
-        input::placeholder {
+        input::placeholder, textarea::placeholder {
             color: rgba(255, 255, 255, 0.3);
         }
 
@@ -120,6 +154,51 @@
             transform: translateY(0);
         }
 
+        .btn-consult {
+            background: linear-gradient(135deg, #d946ef, #60a5fa);
+        }
+        
+        .btn-consult:hover {
+            box-shadow: 0 4px 12px rgba(217, 70, 239, 0.4);
+        }
+
+        .result-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 16px;
+        }
+
+        .result-message {
+            font-size: 0.9rem;
+            color: var(--primary-color);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .result-book {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed rgba(255,255,255,0.1);
+        }
+        .result-book:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .result-book-title {
+            font-weight: 600;
+            color: #fff;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+        .result-book-keywords {
+            font-size: 0.8rem;
+            color: #aaa;
+        }
+
         #canvas-container {
             position: absolute;
             top: 0;
@@ -141,11 +220,13 @@
             pointer-events: none;
             text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
             fill: #fff;
+            transition: all 0.3s ease;
         }
 
         .link {
             stroke: rgba(255, 255, 255, 0.2);
             stroke-opacity: 0.6;
+            transition: stroke-opacity 0.3s ease;
         }
 
         /* 凡例 */
@@ -171,10 +252,28 @@
 <body>
 
     <div id="ui-container">
-        <h1>知識の地図</h1>
+        <h1>知識の地図 v2</h1>
         <p class="desc">読んだ本とキーワードをつなぎ、<br>思考の広がりを可視化します。</p>
 
+        <!-- モヤモヤ相談機能 (v2 新機能) -->
+        <div class="consult-section">
+            <h2>💭 モヤモヤ相談</h2>
+            <p class="desc" style="margin-bottom: 12px;">今の悩みや考えていることを入力すると、過去の読書知識からヒントを探します。</p>
+            <div class="form-group">
+                <textarea id="worry-input" placeholder="例: 将来のキャリアについて悩んでいる。自分らしく生きたいが、社会の枠組みに縛られている気がする..."></textarea>
+            </div>
+            <button id="consult-btn" class="btn-consult">ヒントを探す</button>
+            <button id="clear-btn" style="background: rgba(255,255,255,0.1); margin-top: 8px; font-size: 0.9rem; padding: 8px;">クリア</button>
+            
+            <div id="result-container" class="result-box" style="display: none;">
+                <!-- 結果がここに表示される -->
+            </div>
+        </div>
+
+        <hr>
+
         <form id="add-form">
+            <h2>📚 本の追加</h2>
             <div class="form-group">
                 <label for="book-title">本のタイトル (既存の本を選ぶとキーワードを追加)</label>
                 <input type="text" id="book-title" list="book-list" placeholder="例: サピエンス全史" required autocomplete="off">
@@ -206,11 +305,11 @@
         const nodes = [];
         const links = [];
 
-        // 初期データ（デモ用）
+        // v2: 指定された初期データ
         const initialData = [
-            { title: "サピエンス全史", keywords: ["歴史", "人類", "認知革命"] },
-            { title: "銃・病原菌・鉄", keywords: ["歴史", "地理", "文明"] },
-            { title: "利己的な遺伝子", keywords: ["進化", "生物学", "人類"] }
+            { title: "嫌われる勇気", keywords: ["自己理解", "心理学", "哲学"] },
+            { title: "LIFE SHIFT", keywords: ["人生", "働き方", "自己理解"] },
+            { title: "人新世の資本論", keywords: ["社会", "資本主義", "哲学"] }
         ];
 
         // グラフ設定
@@ -257,6 +356,21 @@
 
             linkSelection.exit().remove();
             const link = linkEnter.merge(linkSelection);
+            
+            // ハイライト時のリンクの透明度
+            link.style("stroke-opacity", d => {
+                const anyHighlighted = nodes.some(n => n.isHighlighted);
+                if (anyHighlighted) {
+                    if (d.source.isHighlighted && d.target.isHighlighted) return 0.9;
+                    return 0.1;
+                }
+                return 0.6;
+            })
+            .style("stroke", d => {
+                const anyHighlighted = nodes.some(n => n.isHighlighted);
+                if (anyHighlighted && d.source.isHighlighted && d.target.isHighlighted) return "#fff";
+                return "rgba(255, 255, 255, 0.2)";
+            });
 
             // ノードの更新
             const nodeSelection = nodeGroup.selectAll(".node").data(nodes, d => d.id);
@@ -269,22 +383,46 @@
                     .on("end", dragended));
 
             // ノードの円
-            nodeEnter.append("circle")
-                .attr("r", d => d.radius)
-                .attr("fill", d => d.type === "book" ? "#8b5cf6" : "#3b82f6")
-                .style("filter", d => `drop-shadow(0 0 10px ${d.type === "book" ? "rgba(139, 92, 246, 0.8)" : "rgba(59, 130, 246, 0.8)"})`);
+            nodeEnter.append("circle");
 
             // ノードのテキスト
             nodeEnter.append("text")
                 .attr("dx", 0)
-                .attr("dy", d => d.radius + 15)
-                .attr("text-anchor", "middle")
-                .text(d => d.label)
-                .style("font-size", d => d.type === "book" ? "14px" : "12px")
-                .style("font-weight", d => d.type === "book" ? "600" : "400");
+                .attr("text-anchor", "middle");
 
             nodeSelection.exit().remove();
             const node = nodeEnter.merge(nodeSelection);
+
+            // 円のスタイル更新 (ハイライト状態を反映)
+            node.select("circle")
+                .attr("r", d => d.isHighlighted ? d.radius * 1.3 : d.radius)
+                .attr("fill", d => {
+                    if (d.type === "book") return d.isHighlighted ? "var(--highlight-book)" : "var(--book-color)";
+                    return d.isHighlighted ? "var(--highlight-kw)" : "var(--keyword-color)";
+                })
+                .style("filter", d => {
+                    if (d.isHighlighted) {
+                        return `drop-shadow(0 0 20px ${d.type === "book" ? "var(--highlight-book)" : "var(--highlight-kw)"})`;
+                    }
+                    return `drop-shadow(0 0 8px ${d.type === "book" ? "rgba(139, 92, 246, 0.6)" : "rgba(59, 130, 246, 0.6)"})`;
+                })
+                .style("opacity", d => {
+                    const anyHighlighted = nodes.some(n => n.isHighlighted);
+                    if (anyHighlighted && !d.isHighlighted) return 0.2;
+                    return 1;
+                });
+
+            // テキストのスタイル更新
+            node.select("text")
+                .attr("dy", d => (d.isHighlighted ? d.radius * 1.3 : d.radius) + 15)
+                .text(d => d.label)
+                .style("font-size", d => d.type === "book" ? "14px" : "12px")
+                .style("font-weight", d => d.isHighlighted || d.type === "book" ? "600" : "400")
+                .style("opacity", d => {
+                    const anyHighlighted = nodes.some(n => n.isHighlighted);
+                    if (anyHighlighted && !d.isHighlighted) return 0.2;
+                    return 1;
+                });
 
             // シミュレーションの更新
             simulation.nodes(nodes).on("tick", () => {
@@ -299,7 +437,7 @@
             });
 
             simulation.force("link").links(links);
-            simulation.alpha(1).restart();
+            simulation.alpha(0.3).restart();
         }
 
         // ドラッグイベントハンドラ
@@ -345,15 +483,20 @@
                     label: title, 
                     type: "book", 
                     radius: 20,
-                    // 初期位置を中央付近からランダムに
                     x: width / 2 + (Math.random() - 0.5) * 100,
-                    y: height / 2 + (Math.random() - 0.5) * 100
+                    y: height / 2 + (Math.random() - 0.5) * 100,
+                    keywords: [],
+                    isHighlighted: false
                 };
                 nodes.push(bookNode);
                 updateBookList(); // 本のリストを更新
             }
 
             keywords.forEach(kw => {
+                if (!bookNode.keywords.includes(kw)) {
+                    bookNode.keywords.push(kw);
+                }
+
                 // キーワードノードの追加または取得
                 let kwNode = nodes.find(n => n.id === "kw-" + kw);
                 if (!kwNode) {
@@ -363,7 +506,8 @@
                         type: "keyword", 
                         radius: 12,
                         x: width / 2 + (Math.random() - 0.5) * 100,
-                        y: height / 2 + (Math.random() - 0.5) * 100
+                        y: height / 2 + (Math.random() - 0.5) * 100,
+                        isHighlighted: false
                     };
                     nodes.push(kwNode);
                 }
@@ -382,7 +526,7 @@
             updateGraph();
         }
 
-        // フォーム送信イベント
+        // フォーム送信イベント (本の追加)
         document.getElementById('add-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const titleInput = document.getElementById('book-title');
@@ -394,6 +538,75 @@
             keywordsInput.value = '';
             titleInput.focus();
         });
+
+        // モヤモヤ相談の実行
+        document.getElementById('consult-btn').addEventListener('click', () => {
+            const worryText = document.getElementById('worry-input').value;
+            const resultContainer = document.getElementById('result-container');
+            
+            if (!worryText.trim()) {
+                clearHighlights();
+                return;
+            }
+
+            let matchedBooks = [];
+            
+            // 本のキーワードと悩みを照合
+            nodes.filter(n => n.type === 'book').forEach(book => {
+                let matchCount = 0;
+                let matchedKeywords = [];
+                
+                book.keywords.forEach(kw => {
+                    // 単純な部分一致
+                    if (worryText.includes(kw)) {
+                        matchCount++;
+                        matchedKeywords.push(kw);
+                    }
+                });
+                
+                book.isHighlighted = matchCount > 0;
+                if (matchCount > 0) {
+                    matchedBooks.push({ title: book.label, keywords: matchedKeywords });
+                }
+            });
+
+            // キーワードノードもハイライト
+            nodes.filter(n => n.type === 'keyword').forEach(kwNode => {
+                kwNode.isHighlighted = worryText.includes(kwNode.label);
+            });
+
+            updateGraph();
+
+            // 結果UIの表示
+            if (matchedBooks.length > 0) {
+                let html = '<div class="result-message">✨ この本がヒントになるかもしれません</div>';
+                matchedBooks.forEach(b => {
+                    html += `
+                        <div class="result-book">
+                            <div class="result-book-title">📘 ${b.title}</div>
+                            <div class="result-book-keywords">関連キーワード: ${b.keywords.join(', ')}</div>
+                        </div>
+                    `;
+                });
+                resultContainer.innerHTML = html;
+                resultContainer.style.display = 'block';
+            } else {
+                resultContainer.innerHTML = '<div class="result-message" style="color:#aaa;">直接関連する本は見つかりませんでしたが、新しい本を追加してみましょう。</div>';
+                resultContainer.style.display = 'block';
+            }
+        });
+
+        // クリアボタン
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            document.getElementById('worry-input').value = '';
+            clearHighlights();
+        });
+
+        function clearHighlights() {
+            nodes.forEach(n => n.isHighlighted = false);
+            updateGraph();
+            document.getElementById('result-container').style.display = 'none';
+        }
 
         // ウィンドウリサイズ対応
         window.addEventListener('resize', () => {
