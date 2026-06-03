@@ -237,7 +237,7 @@
             <h2>モヤモヤ探索</h2>
             <p class="desc" style="margin-bottom: 12px; font-size: 0.75rem;">今の悩みや思考を入力し、宇宙からヒントとなる繋がりを発見します。</p>
             <div class="form-group">
-                <textarea id="worry-input" placeholder="例: 働き方について悩んでいる。新しい視点が欲しい..."></textarea>
+                <textarea id="worry-input" placeholder="例: 社会問題と自分のキャリアをどう重ねるか悩んでいる。"></textarea>
             </div>
             <button id="consult-btn" class="btn-consult">宇宙に問いかける</button>
             <button id="clear-btn" style="background: rgba(255,255,255,0.05); color:#aaa; margin-top: 8px; font-size: 0.85rem; padding: 10px; border:none; box-shadow:none;">探索をリセット</button>
@@ -251,17 +251,17 @@
             <h2>知識の種を追加</h2>
             <div class="form-group">
                 <label for="book-title">本のタイトル (既存の星へキーワードを追加可能)</label>
-                <input type="text" id="book-title" list="book-list" placeholder="例: サピエンス全史" required autocomplete="off">
+                <input type="text" id="book-title" list="book-list" placeholder="例: デザインのひきだし" required autocomplete="off">
                 <datalist id="book-list"></datalist>
             </div>
             <div class="form-group">
                 <label for="keywords">キーワード（カンマ区切り）</label>
-                <input type="text" id="keywords" placeholder="例: 歴史, 人類, 認知革命" required autocomplete="off">
+                <input type="text" id="keywords" placeholder="例: デザイン, アイデア, 表現" required autocomplete="off">
             </div>
             <button type="submit">宇宙へ放つ</button>
         </form>
 
-        <div class="legend">
+        <div class="legend" style="margin-bottom: 10px;">
             <div class="legend-item">
                 <div class="legend-color legend-book"></div>
                 <span>本 (Knowledge Core)</span>
@@ -271,6 +271,7 @@
                 <span>キーワード (Knowledge Node)</span>
             </div>
         </div>
+        <button id="load-sample-btn" style="background: rgba(255,255,255,0.05); color:#aaa; border:none; box-shadow:none; font-size: 0.8rem; padding: 8px;">サンプルデータを読み込む</button>
     </div>
 
     <div id="view-controls">ドラッグで視点移動 / スクロールでズーム</div>
@@ -280,12 +281,23 @@
         // データ構造
         let nodes = [];
         let links = [];
+        
+        // 中央の世界観ノード
+        const rootNode = { 
+            id: 'root', 
+            label: 'My Knowledge Universe', 
+            type: 'root', 
+            isHighlighted: true, 
+            highlightLevel: 3 
+        };
 
-        // 初期データ
-        const initialData = [
+        // 指定されたサンプルデータ
+        const sampleData = [
+            { title: "サピエンス全史", keywords: ["歴史", "人類", "文明", "社会"] },
+            { title: "人新世の資本論", keywords: ["資本主義", "社会", "環境", "哲学"] },
+            { title: "LIFE SHIFT", keywords: ["人生", "キャリア", "働き方", "自己理解"] },
             { title: "嫌われる勇気", keywords: ["自己理解", "心理学", "哲学"] },
-            { title: "LIFE SHIFT", keywords: ["人生", "働き方", "自己理解"] },
-            { title: "人新世の資本論", keywords: ["社会", "資本主義", "哲学"] }
+            { title: "ファクトフルネス", keywords: ["統計", "世界", "思考", "社会"] }
         ];
 
         // ぼかしテクスチャの生成関数（エネルギー球用）
@@ -314,34 +326,49 @@
             .showNavInfo(false)
             // リンク設定
             .linkWidth(d => d.isHighlighted ? 1.5 : 0.3)
-            .linkColor(d => d.isHighlighted ? 'rgba(255, 255, 255, 0.8)' : 'rgba(100, 149, 237, 0.15)')
+            .linkColor(d => {
+                if (d.source.id === 'root' || d.target.id === 'root') return 'rgba(250, 204, 21, 0.15)'; // rootリンクは黄色っぽく
+                return d.isHighlighted ? 'rgba(255, 255, 255, 0.8)' : 'rgba(100, 149, 237, 0.15)';
+            })
             .linkOpacity(1)
             // リンク上の光の粒子（エネルギーの流れ）
-            .linkDirectionalParticles(d => d.isHighlighted ? 4 : 1)
-            .linkDirectionalParticleWidth(d => d.isHighlighted ? 2.5 : 1)
+            .linkDirectionalParticles(d => {
+                if (d.source.id === 'root' || d.target.id === 'root') return 2;
+                return d.isHighlighted ? 4 : 1;
+            })
+            .linkDirectionalParticleWidth(d => d.isHighlighted ? 2.5 : (d.source.id === 'root' || d.target.id === 'root' ? 1.5 : 1))
             .linkDirectionalParticleSpeed(d => d.isHighlighted ? 0.01 : 0.002)
-            .linkDirectionalParticleColor(d => d.isHighlighted ? '#f472b6' : '#67e8f9')
+            .linkDirectionalParticleColor(d => {
+                if (d.source.id === 'root' || d.target.id === 'root') return '#fef08a';
+                return d.isHighlighted ? '#f472b6' : '#67e8f9';
+            })
             // ノードのカスタム描画
             .nodeThreeObject(node => {
                 const group = new THREE.Group();
 
-                const isHighlighted = node.isHighlighted;
+                const isRoot = node.type === 'root';
                 const isBook = node.type === 'book';
+                const isHighlighted = node.isHighlighted;
                 
                 // 色の設定
-                let color = isBook ? '#c084fc' : '#67e8f9';
-                if (isHighlighted) {
-                    // ハイライトレベルによる色の波及効果
+                let color = isRoot ? '#facc15' : (isBook ? '#c084fc' : '#67e8f9'); // Rootは黄色
+                if (isHighlighted && !isRoot) {
                     if (node.highlightLevel === 1) color = '#f472b6'; // 直接マッチ
                     else if (node.highlightLevel === 2) color = '#38bdf8'; // 隣接マッチ
                     else color = '#ffffff';
                 }
 
-                // リンク数に基づいてサイズを決定
-                const connections = links.filter(l => l.source === node.id || l.target === node.id || l.source.id === node.id || l.target.id === node.id).length;
-                let baseSize = isBook ? 12 : 5;
-                let scale = baseSize + connections * (isBook ? 1.5 : 0.8);
-                if (isHighlighted) scale *= 1.3;
+                // サイズ設定
+                let scale;
+                if (isRoot) {
+                    scale = 40;
+                } else {
+                    const connections = links.filter(l => l.source === node.id || l.target === node.id || l.source.id === node.id || l.target.id === node.id).length;
+                    let baseSize = isBook ? 12 : 5;
+                    scale = baseSize + connections * (isBook ? 1.5 : 0.8);
+                }
+                
+                if (isHighlighted && !isRoot) scale *= 1.3;
 
                 // 光る球体 (Sprite)
                 const material = new THREE.SpriteMaterial({ 
@@ -349,27 +376,27 @@
                     color: color, 
                     transparent: true, 
                     blending: THREE.AdditiveBlending,
-                    opacity: isHighlighted ? 1 : 0.6
+                    opacity: (isHighlighted || isRoot) ? 1 : 0.6
                 });
                 const sprite = new THREE.Sprite(material);
                 sprite.scale.set(scale, scale, 1);
                 
-                // 呼吸エフェクト用のアニメーション変数を保持
+                // 呼吸エフェクト用アニメーション変数
                 sprite.userData = { 
                     baseScale: scale,
                     phase: Math.random() * Math.PI * 2,
-                    speed: isBook ? 0.02 : 0.03
+                    speed: isRoot ? 0.01 : (isBook ? 0.02 : 0.03)
                 };
                 group.add(sprite);
-                node.__sprite = sprite; // 参照を保持
+                node.__sprite = sprite; 
 
                 // テキストラベル
                 const spriteText = new SpriteText(node.label);
-                spriteText.color = isHighlighted ? '#ffffff' : (isBook ? '#e2e8f0' : '#94a3b8');
-                spriteText.textHeight = isBook ? 3 : 2;
-                spriteText.position.y = -(scale / 3) - 2;
+                spriteText.color = isRoot ? '#fef08a' : (isHighlighted ? '#ffffff' : (isBook ? '#e2e8f0' : '#94a3b8'));
+                spriteText.textHeight = isRoot ? 5 : (isBook ? 3 : 2);
+                spriteText.position.y = -(scale / 3) - (isRoot ? 4 : 2);
                 spriteText.material.transparent = true;
-                spriteText.material.opacity = isHighlighted ? 1 : 0.7;
+                spriteText.material.opacity = (isHighlighted || isRoot) ? 1 : 0.7;
                 group.add(spriteText);
 
                 return group;
@@ -379,23 +406,23 @@
         Graph.d3Force('charge').strength(-150);
         Graph.d3Force('link').distance(60);
 
-        // 宇宙背景（星屑パーティクル）の追加
+        // 宇宙背景（星屑パーティクル）
         const scene = Graph.scene();
         const starGeo = new THREE.BufferGeometry();
         const starCount = 3000;
         const positions = new Float32Array(starCount * 3);
         const colors = new Float32Array(starCount * 3);
-        const color = new THREE.Color();
+        const colorObj = new THREE.Color();
 
         for(let i=0; i<starCount; i++) {
             positions[i*3] = (Math.random() - 0.5) * 2000;
             positions[i*3+1] = (Math.random() - 0.5) * 2000;
             positions[i*3+2] = (Math.random() - 0.5) * 2000;
 
-            color.setHSL(Math.random() * 0.2 + 0.5, 0.8, Math.random() * 0.5 + 0.5); // 青〜紫系の星
-            colors[i*3] = color.r;
-            colors[i*3+1] = color.g;
-            colors[i*3+2] = color.b;
+            colorObj.setHSL(Math.random() * 0.2 + 0.5, 0.8, Math.random() * 0.5 + 0.5); // 青〜紫系
+            colors[i*3] = colorObj.r;
+            colors[i*3+1] = colorObj.g;
+            colors[i*3+2] = colorObj.b;
         }
 
         starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -412,14 +439,13 @@
         const stars = new THREE.Points(starGeo, starMat);
         scene.add(stars);
 
-        // 呼吸アニメーションと星の回転ループ
+        // アニメーションループ
         let time = 0;
         Graph.onEngineTick(() => {
             time += 1;
             stars.rotation.y += 0.0002;
             stars.rotation.x += 0.0001;
 
-            // ノードの鼓動エフェクト
             nodes.forEach(node => {
                 if (node.__sprite) {
                     const ud = node.__sprite.userData;
@@ -430,18 +456,8 @@
             });
         });
 
-        // データ追加・更新ロジック
-        function updateBookList() {
-            const dataList = document.getElementById('book-list');
-            dataList.innerHTML = '';
-            nodes.filter(n => n.type === 'book').forEach(book => {
-                const option = document.createElement('option');
-                option.value = book.label;
-                dataList.appendChild(option);
-            });
-        }
-
-        function addData(title, keywordsStr) {
+        // データ処理ロジック (描画更新は別で行う)
+        function processDataEntry(title, keywordsStr) {
             const kws = keywordsStr.split(',').map(k => k.trim()).filter(k => k !== "");
             if (kws.length === 0) return;
 
@@ -455,7 +471,11 @@
                     isHighlighted: false
                 };
                 nodes.push(bookNode);
-                updateBookList();
+                
+                // Rootノードがあれば緩く繋ぐ
+                if (nodes.find(n => n.id === 'root')) {
+                    links.push({ source: 'root', target: bookNode.id, value: 0.1 });
+                }
             }
 
             kws.forEach(kw => {
@@ -483,20 +503,51 @@
                     links.push({ source: bookNode.id, target: kwNode.id, value: 1 });
                 }
             });
+        }
 
-            // 3d-force-graph は新しいオブジェクト参照を要求する
+        // 初期化・サンプルの読み込み
+        function loadSampleData() {
+            nodes = [rootNode]; // Rootノードを配置
+            links = [];
+            
+            sampleData.forEach(data => processDataEntry(data.title, data.keywords.join(', ')));
+            
+            // UIリスト更新
+            updateBookList();
+            
+            // 一括でグラフにデータを渡す
             Graph.graphData({ nodes: [...nodes], links: [...links] });
         }
 
-        // 初期データの読み込み
-        initialData.forEach(data => addData(data.title, data.keywords.join(', ')));
+        function updateBookList() {
+            const dataList = document.getElementById('book-list');
+            dataList.innerHTML = '';
+            nodes.filter(n => n.type === 'book').forEach(book => {
+                const option = document.createElement('option');
+                option.value = book.label;
+                dataList.appendChild(option);
+            });
+        }
+
+        // --- 起動時に自動でサンプルを読み込む ---
+        loadSampleData();
+        // ------------------------------------
+
+        document.getElementById('load-sample-btn').addEventListener('click', loadSampleData);
 
         // 本の追加イベント
         document.getElementById('add-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const titleInput = document.getElementById('book-title');
             const keywordsInput = document.getElementById('keywords');
-            addData(titleInput.value, keywordsInput.value);
+            
+            // データ追加
+            processDataEntry(titleInput.value, keywordsInput.value);
+            updateBookList();
+            
+            // グラフ再描画
+            Graph.graphData({ nodes: [...nodes], links: [...links] });
+            
             titleInput.value = '';
             keywordsInput.value = '';
             titleInput.focus();
@@ -531,23 +582,23 @@
                 
                 if (matchCount > 0) {
                     book.isHighlighted = true;
-                    book.highlightLevel = 1; // 強い光
+                    book.highlightLevel = 1; 
                     matchedBooks.push({ node: book, title: book.label, keywords: matchedKeywords });
                 }
             });
 
-            // 2. 波及効果（マッチした本のキーワードノードを光らせる）
+            // 2. 波及効果
             matchedBooks.forEach(b => {
                 b.keywords.forEach(kw => {
                     const kwNode = nodes.find(n => n.id === "kw-" + kw);
                     if (kwNode) {
                         kwNode.isHighlighted = true;
-                        kwNode.highlightLevel = 2; // 少し弱い光
+                        kwNode.highlightLevel = 2;
                     }
                 });
             });
 
-            // 3. リンクのハイライト（両端がハイライトされていれば光る）
+            // 3. リンクのハイライト
             links.forEach(l => {
                 const sourceNode = typeof l.source === 'object' ? l.source : nodes.find(n => n.id === l.source);
                 const targetNode = typeof l.target === 'object' ? l.target : nodes.find(n => n.id === l.target);
@@ -556,25 +607,29 @@
                 }
             });
 
+            // Rootノードのハイライト保護
+            const rNode = nodes.find(n => n.id === 'root');
+            if(rNode) { rNode.isHighlighted = true; rNode.highlightLevel = 3; }
+
             // 描画更新
             Graph
-                .nodeThreeObject(Graph.nodeThreeObject()) // 再評価
+                .nodeThreeObject(Graph.nodeThreeObject())
                 .linkColor(Graph.linkColor())
                 .linkWidth(Graph.linkWidth())
                 .linkDirectionalParticles(Graph.linkDirectionalParticles())
-                .linkDirectionalParticleWidth(Graph.linkDirectionalParticleWidth());
+                .linkDirectionalParticleWidth(Graph.linkDirectionalParticleWidth())
+                .linkDirectionalParticleColor(Graph.linkDirectionalParticleColor());
 
-            // カメラ移動（最初のヒット本へフォーカス）
+            // カメラ移動
             if (matchedBooks.length > 0) {
                 const target = matchedBooks[0].node;
-                // シミュレーションが落ち着くのを少し待ってから移動
                 setTimeout(() => {
                     if (target.x !== undefined) {
                         const distRatio = 1 + 120 / Math.hypot(target.x, target.y, target.z);
                         Graph.cameraPosition(
                             { x: target.x * distRatio, y: target.y * distRatio, z: target.z * distRatio }, 
                             target, 
-                            2000 // アニメーション時間
+                            2000
                         );
                     }
                 }, 300);
@@ -602,25 +657,27 @@
         document.getElementById('clear-btn').addEventListener('click', () => {
             document.getElementById('worry-input').value = '';
             clearHighlights();
-            // カメラを少し遠ざける
-            Graph.cameraPosition({ x: 0, y: 0, z: 300 }, { x:0, y:0, z:0 }, 2000);
+            Graph.cameraPosition({ x: 0, y: 0, z: 400 }, { x:0, y:0, z:0 }, 2000);
         });
 
         function clearHighlights() {
             nodes.forEach(n => { n.isHighlighted = false; n.highlightLevel = 0; });
             links.forEach(l => { l.isHighlighted = false; });
             
+            const rNode = nodes.find(n => n.id === 'root');
+            if(rNode) { rNode.isHighlighted = true; rNode.highlightLevel = 3; }
+
             Graph
                 .nodeThreeObject(Graph.nodeThreeObject())
                 .linkColor(Graph.linkColor())
                 .linkWidth(Graph.linkWidth())
                 .linkDirectionalParticles(Graph.linkDirectionalParticles())
-                .linkDirectionalParticleWidth(Graph.linkDirectionalParticleWidth());
+                .linkDirectionalParticleWidth(Graph.linkDirectionalParticleWidth())
+                .linkDirectionalParticleColor(Graph.linkDirectionalParticleColor());
                 
             document.getElementById('result-container').style.display = 'none';
         }
 
-        // ウィンドウリサイズ対応
         window.addEventListener('resize', () => {
             Graph.width(window.innerWidth).height(window.innerHeight);
         });
