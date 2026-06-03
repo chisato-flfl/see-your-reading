@@ -12,10 +12,6 @@
             --text-color: #e2e8f0;
             --primary-color: #38bdf8;
             --primary-glow: rgba(56, 189, 248, 0.5);
-            --book-color: #c084fc; 
-            --keyword-color: #67e8f9; 
-            --highlight-book: #f472b6; 
-            --highlight-kw: #38bdf8; 
             --panel-border: rgba(255, 255, 255, 0.08);
         }
 
@@ -49,16 +45,8 @@
             max-height: calc(100vh - 40px);
             overflow-y: auto;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.1);
-            transition: all 0.3s ease;
             scrollbar-width: thin;
             scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-        }
-
-        #ui-container::-webkit-scrollbar { width: 6px; }
-        #ui-container::-webkit-scrollbar-track { background: transparent; }
-        #ui-container::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
         }
 
         h1 {
@@ -66,7 +54,6 @@
             color: #fff;
             margin-bottom: 6px;
             font-weight: 600;
-            letter-spacing: 0.05em;
             text-shadow: 0 0 10px var(--primary-glow);
         }
 
@@ -75,18 +62,6 @@
             color: #fff;
             margin-bottom: 12px;
             font-weight: 600;
-            display: flex;
-            align-items: center;
-        }
-        h2::before {
-            content: '';
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: var(--primary-color);
-            border-radius: 50%;
-            margin-right: 8px;
-            box-shadow: 0 0 8px var(--primary-color);
         }
 
         p.desc {
@@ -122,13 +97,11 @@
             outline: none;
             transition: all 0.3s;
         }
-        textarea { resize: vertical; min-height: 80px; }
         input:focus, textarea:focus {
             border-color: var(--primary-color);
             box-shadow: 0 0 10px var(--primary-glow);
             background: rgba(0, 0, 0, 0.6);
         }
-        input::placeholder, textarea::placeholder { color: #475569; }
 
         button {
             width: 100%;
@@ -142,48 +115,12 @@
             cursor: pointer;
             transition: all 0.3s;
             margin-top: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
         button:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
             background: linear-gradient(135deg, rgba(139, 92, 246, 1), rgba(56, 189, 248, 1));
         }
-
-        .btn-consult { background: linear-gradient(135deg, rgba(236, 72, 153, 0.8), rgba(139, 92, 246, 0.8)); }
-        .btn-consult:hover {
-            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4);
-            background: linear-gradient(135deg, rgba(236, 72, 153, 1), rgba(139, 92, 246, 1));
-        }
-
-        .result-box {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--panel-border);
-            border-radius: 8px;
-            padding: 12px;
-            margin-top: 16px;
-        }
-
-        .result-message {
-            font-size: 0.85rem;
-            color: var(--highlight-book);
-            margin-bottom: 12px;
-            font-weight: 600;
-        }
-
-        .result-book {
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px dashed rgba(255,255,255,0.1);
-        }
-        .result-book:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
-        .result-book-title {
-            font-weight: 600;
-            color: #fff;
-            font-size: 0.95rem;
-            margin-bottom: 4px;
-        }
-        .result-book-keywords { font-size: 0.75rem; color: #94a3b8; }
 
         #canvas-container {
             position: absolute;
@@ -193,14 +130,6 @@
             height: 100%;
             z-index: 1;
         }
-
-        .legend { margin-top: 24px; font-size: 0.8rem; }
-        .legend-item { display: flex; align-items: center; margin-bottom: 8px; }
-        .legend-color {
-            width: 10px; height: 10px; border-radius: 50%; margin-right: 8px;
-        }
-        .legend-book { background-color: var(--book-color); box-shadow: 0 0 8px var(--book-color); }
-        .legend-keyword { background-color: var(--keyword-color); box-shadow: 0 0 8px var(--keyword-color); }
 
         #view-controls {
             position: absolute;
@@ -219,12 +148,13 @@
         }
     </style>
 
-    <!-- ES Module Import Map -->
+    <!-- Import Map: WebGPU依存を含まない通常のThree.jsを指定 -->
     <script type="importmap">
     {
         "imports": {
             "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "3d-force-graph": "https://esm.sh/3d-force-graph@1.43.3?external=three"
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "d3-force-3d": "https://esm.sh/d3-force-3d@3.0.5?external=three"
         }
     }
     </script>
@@ -234,24 +164,11 @@
         <h1>Knowledge Cosmos</h1>
         <p class="desc">あなたの読書記録が星となり、<br>広大な知識の宇宙を形成します。</p>
 
-        <div class="consult-section">
-            <h2>モヤモヤ探索</h2>
-            <div class="form-group">
-                <textarea id="worry-input" placeholder="例: 社会問題とキャリアについて悩んでいる。"></textarea>
-            </div>
-            <button id="consult-btn" class="btn-consult">宇宙に問いかける</button>
-            <button id="clear-btn" style="background: rgba(255,255,255,0.05); color:#aaa; margin-top: 8px; font-size: 0.85rem; padding: 10px; border:none; box-shadow:none;">リセット</button>
-            <div id="result-container" class="result-box" style="display: none;"></div>
-        </div>
-
-        <hr>
-
         <form id="add-form">
             <h2>知識の種を追加</h2>
             <div class="form-group">
                 <label for="book-title">本のタイトル</label>
-                <input type="text" id="book-title" list="book-list" required autocomplete="off">
-                <datalist id="book-list"></datalist>
+                <input type="text" id="book-title" required autocomplete="off">
             </div>
             <div class="form-group">
                 <label for="keywords">キーワード（カンマ区切り）</label>
@@ -259,38 +176,91 @@
             </div>
             <button type="submit">宇宙へ放つ</button>
         </form>
-
-        <div class="legend" style="margin-bottom: 10px;">
-            <div class="legend-item">
-                <div class="legend-color legend-book"></div>
-                <span>本 (Knowledge Core)</span>
-            </div>
-            <div class="legend-item">
-                <div class="legend-color legend-keyword"></div>
-                <span>キーワード (Knowledge Node)</span>
-            </div>
-        </div>
     </div>
 
     <div id="view-controls">ドラッグで視点移動 / スクロールでズーム</div>
     <div id="canvas-container"></div>
 
     <script type="module">
+        // 外部ライブラリをラップせず、初心者に優しい「通常のThree.js」構成で実装
         import * as THREE from 'three';
-        import ForceGraph3D from '3d-force-graph';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { forceSimulation, forceLink, forceManyBody, forceCenter } from 'd3-force-3d';
 
-        // 状態
-        let nodes = [];
-        let links = [];
+        // --- 1. Three.js の基本セットアップ (WebGLRendererの使用) ---
+        const container = document.getElementById('canvas-container');
+        
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x020205);
 
-        const rootNode = { 
-            id: 'root', 
-            label: 'Knowledge Universe', 
-            type: 'root', 
-            isHighlighted: true, 
-            highlightLevel: 3 
-        };
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 0, 150);
 
+        // 要件: 通常のWebGLRendererを利用（WebGPU依存の排除）
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // --- 2. データの準備 ---
+        const nodesData = [];
+        const linksData = [];
+        const nodeMeshes = new Map(); // IDからMeshへのマッピング
+
+        // テキストを描画する関数 (CanvasTextureを利用)
+        function createTextSprite(text, type) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 64;
+            
+            const isRoot = type === 'root';
+            const isBook = type === 'book';
+            
+            ctx.font = isRoot ? "bold 24px sans-serif" : "bold 16px sans-serif";
+            ctx.fillStyle = isRoot ? "#fef08a" : (isBook ? "#ffffff" : "#94a3b8");
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowColor = "rgba(0,0,0,1)";
+            ctx.shadowBlur = 4;
+            ctx.fillText(text, 128, 32);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.scale.set(24, 6, 1);
+            return sprite;
+        }
+
+        // ノードをシーンに追加する関数
+        function addNodeMesh(node) {
+            const isRoot = node.type === 'root';
+            const isBook = node.type === 'book';
+            
+            const radius = isRoot ? 6 : (isBook ? 3 : 1.5);
+            const color = isRoot ? 0xfacc15 : (isBook ? 0xc084fc : 0x67e8f9);
+
+            const group = new THREE.Group();
+
+            // 球体モデル
+            const geo = new THREE.SphereGeometry(radius, 16, 16);
+            const mat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.9 });
+            const sphere = new THREE.Mesh(geo, mat);
+            group.add(sphere);
+
+            // テキストラベル
+            const textSprite = createTextSprite(node.label, node.type);
+            textSprite.position.y = -radius - 2.5;
+            group.add(textSprite);
+
+            scene.add(group);
+            nodeMeshes.set(node.id, group);
+        }
+
+        // 初期データ（サンプルノード）
         const sampleData = [
             { title: "サピエンス全史", keywords: ["歴史", "人類", "文明", "社会"] },
             { title: "人新世の資本論", keywords: ["資本主義", "社会", "環境", "哲学"] },
@@ -298,349 +268,104 @@
             { title: "嫌われる勇気", keywords: ["自己理解", "心理学", "哲学"] }
         ];
 
-        // テキストスプライト生成ユーティリティ（three-spritetext依存排除）
-        function createTextSprite(text, isRoot) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 512;
-            canvas.height = 128;
-            ctx.font = isRoot ? "bold 32px sans-serif" : "bold 20px sans-serif";
-            ctx.fillStyle = isRoot ? "#fef08a" : "#ffffff";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            // 影をつけて視認性を高める
-            ctx.shadowColor = "rgba(0,0,0,0.8)";
-            ctx.shadowBlur = 4;
-            ctx.shadowOffsetX = 2;
-            ctx.shadowOffsetY = 2;
-            ctx.fillText(text, 256, 64);
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            texture.minFilter = THREE.LinearFilter;
-            const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
-            const sprite = new THREE.Sprite(spriteMat);
-            sprite.scale.set(isRoot ? 30 : 15, isRoot ? 7.5 : 3.75, 1);
-            return sprite;
-        }
+        // ルートノードの作成
+        const rootNode = { id: 'root', label: 'Knowledge Universe', type: 'root' };
+        nodesData.push(rootNode);
 
-        // 3Dグラフ初期化
-        const elem = document.getElementById('canvas-container');
-        const Graph = ForceGraph3D()(elem)
-            .backgroundColor('#020205')
-            .showNavInfo(false)
-            .linkWidth(d => d.isHighlighted ? 1.5 : 0.3)
-            .linkColor(d => {
-                if (d.source.id === 'root' || d.target.id === 'root') return 'rgba(250, 204, 21, 0.15)';
-                return d.isHighlighted ? 'rgba(255, 255, 255, 0.8)' : 'rgba(100, 149, 237, 0.15)';
-            })
-            .linkDirectionalParticles(d => (d.source.id === 'root' || d.target.id === 'root') ? 2 : (d.isHighlighted ? 4 : 1))
-            .linkDirectionalParticleWidth(d => d.isHighlighted ? 2.5 : (d.source.id === 'root' || d.target.id === 'root' ? 1.5 : 1))
-            .linkDirectionalParticleSpeed(d => d.isHighlighted ? 0.01 : 0.002)
-            .linkDirectionalParticleColor(d => {
-                if (d.source.id === 'root' || d.target.id === 'root') return '#fef08a';
-                return d.isHighlighted ? '#f472b6' : '#67e8f9';
-            })
-            .nodeThreeObject(node => {
-                const group = new THREE.Group();
+        // 本とキーワードを展開してノード化
+        sampleData.forEach(book => {
+            const bookId = 'book-' + book.title;
+            nodesData.push({ id: bookId, label: book.title, type: 'book' });
+            linksData.push({ source: 'root', target: bookId }); // ルートと接続
 
-                const isRoot = node.type === 'root';
-                const isBook = node.type === 'book';
-                const isHighlighted = node.isHighlighted;
-                
-                let colorHex = isRoot ? 0xfacc15 : (isBook ? 0xc084fc : 0x67e8f9);
-                if (isHighlighted && !isRoot) {
-                    if (node.highlightLevel === 1) colorHex = 0xf472b6;
-                    else if (node.highlightLevel === 2) colorHex = 0x38bdf8;
-                    else colorHex = 0xffffff;
+            book.keywords.forEach(kw => {
+                const kwId = 'kw-' + kw;
+                if (!nodesData.find(n => n.id === kwId)) {
+                    nodesData.push({ id: kwId, label: kw, type: 'keyword' });
                 }
-
-                // Node size
-                let scale;
-                if (isRoot) {
-                    scale = 8;
-                } else {
-                    const connections = links.filter(l => l.source === node.id || l.target === node.id || l.source.id === node.id || l.target.id === node.id).length;
-                    let baseSize = isBook ? 3 : 1.5;
-                    scale = baseSize + connections * (isBook ? 0.5 : 0.3);
-                }
-                if (isHighlighted && !isRoot) scale *= 1.3;
-
-                // SphereGeometryを確実に使用する (CanvasTexture等でのエラーを防ぐ)
-                const geometry = new THREE.SphereGeometry(1, 32, 32);
-                const material = new THREE.MeshBasicMaterial({ 
-                    color: colorHex, 
-                    transparent: true, 
-                    opacity: (isHighlighted || isRoot) ? 1.0 : 0.6 
-                });
-                const sphere = new THREE.Mesh(geometry, material);
-                sphere.scale.set(scale, scale, scale);
-                
-                sphere.userData = { 
-                    baseScale: scale,
-                    phase: Math.random() * Math.PI * 2,
-                    speed: isRoot ? 0.01 : (isBook ? 0.02 : 0.03)
-                };
-                group.add(sphere);
-                node.__mesh = sphere; 
-
-                // Text Label
-                const textSprite = createTextSprite(node.label, isRoot);
-                textSprite.position.y = -scale - (isRoot ? 4 : 2);
-                textSprite.material.opacity = (isHighlighted || isRoot) ? 1.0 : 0.7;
-                group.add(textSprite);
-
-                return group;
+                linksData.push({ source: bookId, target: kwId });
             });
+        });
 
-        // カスタムの力学シミュレーション調整
-        Graph.d3Force('charge').strength(-150);
-        Graph.d3Force('link').distance(60);
+        // --- 3. D3 3Dフォースシミュレーション ---
+        // ノードにランダムな初期位置を付与
+        nodesData.forEach(n => {
+            n.x = (Math.random() - 0.5) * 50;
+            n.y = (Math.random() - 0.5) * 50;
+            n.z = (Math.random() - 0.5) * 50;
+            addNodeMesh(n); // メッシュの生成
+        });
 
-        // 宇宙背景
-        const scene = Graph.scene();
+        const simulation = forceSimulation(nodesData)
+            .numDimensions(3)
+            .force('link', forceLink(linksData).id(d => d.id).distance(20))
+            .force('charge', forceManyBody().strength(-80))
+            .force('center', forceCenter(0, 0, 0));
+
+        // リンク（線）を描画するためのラインオブジェクト
+        const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 });
+        const lineGeometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(linksData.length * 6); // 各線分に x,y,z が2つ
+        lineGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const linesMesh = new THREE.LineSegments(lineGeometry, lineMaterial);
+        scene.add(linesMesh);
+
+        // 背景の星屑パーティクル
         const starGeo = new THREE.BufferGeometry();
         const starCount = 2000;
-        const positions = new Float32Array(starCount * 3);
-        const colors = new Float32Array(starCount * 3);
-        const colorObj = new THREE.Color();
-
+        const starPos = new Float32Array(starCount * 3);
         for(let i=0; i<starCount; i++) {
-            positions[i*3] = (Math.random() - 0.5) * 2000;
-            positions[i*3+1] = (Math.random() - 0.5) * 2000;
-            positions[i*3+2] = (Math.random() - 0.5) * 2000;
-
-            colorObj.setHSL(Math.random() * 0.2 + 0.5, 0.8, Math.random() * 0.5 + 0.5);
-            colors[i*3] = colorObj.r;
-            colors[i*3+1] = colorObj.g;
-            colors[i*3+2] = colorObj.b;
+            starPos[i*3] = (Math.random() - 0.5) * 1000;
+            starPos[i*3+1] = (Math.random() - 0.5) * 1000;
+            starPos[i*3+2] = (Math.random() - 0.5) * 1000;
         }
-
-        starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        starGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-        const starMat = new THREE.PointsMaterial({
-            size: 1.5,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending
-        });
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        const starMat = new THREE.PointsMaterial({ color: 0x888888, size: 1.0, transparent: true, opacity: 0.8 });
         const stars = new THREE.Points(starGeo, starMat);
         scene.add(stars);
 
-        // アニメーションループ
-        let time = 0;
-        Graph.onEngineTick(() => {
-            time += 1;
-            stars.rotation.y += 0.0002;
-            stars.rotation.x += 0.0001;
+        // --- 4. アニメーションループ ---
+        function animate() {
+            requestAnimationFrame(animate);
 
-            nodes.forEach(node => {
-                if (node.__mesh) {
-                    const ud = node.__mesh.userData;
-                    const pulse = Math.sin(time * ud.speed + ud.phase) * 0.1 + 1;
-                    const newScale = ud.baseScale * pulse;
-                    node.__mesh.scale.set(newScale, newScale, newScale);
+            // シミュレーション結果をMeshに反映
+            nodesData.forEach(node => {
+                const group = nodeMeshes.get(node.id);
+                if (group) {
+                    group.position.set(node.x, node.y, node.z);
                 }
             });
-        });
 
-        function processDataEntry(title, keywordsStr) {
-            const kws = keywordsStr.split(',').map(k => k.trim()).filter(k => k !== "");
-            if (kws.length === 0) return;
-
-            let bookNode = nodes.find(n => n.id === "book-" + title);
-            if (!bookNode) {
-                bookNode = { 
-                    id: "book-" + title, 
-                    label: title, 
-                    type: "book", 
-                    keywords: [],
-                    isHighlighted: false
-                };
-                nodes.push(bookNode);
-                
-                if (nodes.find(n => n.id === 'root')) {
-                    links.push({ source: 'root', target: bookNode.id, value: 0.1 });
-                }
-            }
-
-            kws.forEach(kw => {
-                if (!bookNode.keywords.includes(kw)) {
-                    bookNode.keywords.push(kw);
-                }
-
-                let kwNode = nodes.find(n => n.id === "kw-" + kw);
-                if (!kwNode) {
-                    kwNode = { 
-                        id: "kw-" + kw, 
-                        label: kw, 
-                        type: "keyword", 
-                        isHighlighted: false
-                    };
-                    nodes.push(kwNode);
-                }
-
-                const linkExists = links.find(l => 
-                    (l.source.id === bookNode.id && l.target.id === kwNode.id) ||
-                    (l.source === bookNode.id && l.target === kwNode.id)
-                );
-                
-                if (!linkExists) {
-                    links.push({ source: bookNode.id, target: kwNode.id, value: 1 });
-                }
+            // リンクの線を更新
+            const linePositions = linesMesh.geometry.attributes.position.array;
+            linksData.forEach((link, i) => {
+                // link.source, link.target はD3によってオブジェクト参照に変換されている
+                linePositions[i * 6]     = link.source.x;
+                linePositions[i * 6 + 1] = link.source.y;
+                linePositions[i * 6 + 2] = link.source.z;
+                linePositions[i * 6 + 3] = link.target.x;
+                linePositions[i * 6 + 4] = link.target.y;
+                linePositions[i * 6 + 5] = link.target.z;
             });
+            linesMesh.geometry.attributes.position.needsUpdate = true;
+
+            // 星屑のゆっくりとした回転
+            stars.rotation.y += 0.0005;
+
+            controls.update();
+            renderer.render(scene, camera);
         }
+        
+        // 描画開始
+        animate();
 
-        function loadSampleData() {
-            nodes = [rootNode];
-            links = [];
-            
-            sampleData.forEach(data => processDataEntry(data.title, data.keywords.join(', ')));
-            
-            const dataList = document.getElementById('book-list');
-            dataList.innerHTML = '';
-            nodes.filter(n => n.type === 'book').forEach(book => {
-                const option = document.createElement('option');
-                option.value = book.label;
-                dataList.appendChild(option);
-            });
-            
-            Graph.graphData({ nodes: [...nodes], links: [...links] });
-        }
-
-        // 初期実行
-        loadSampleData();
-
-        // イベントリスナー
-        document.getElementById('add-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            processDataEntry(document.getElementById('book-title').value, document.getElementById('keywords').value);
-            Graph.graphData({ nodes: [...nodes], links: [...links] });
-            
-            document.getElementById('book-title').value = '';
-            document.getElementById('keywords').value = '';
-            document.getElementById('book-title').focus();
-        });
-
-        document.getElementById('consult-btn').addEventListener('click', () => {
-            const worryText = document.getElementById('worry-input').value;
-            if (!worryText.trim()) {
-                clearHighlights();
-                return;
-            }
-
-            nodes.forEach(n => { n.isHighlighted = false; n.highlightLevel = 0; });
-            links.forEach(l => { l.isHighlighted = false; });
-            
-            let matchedBooks = [];
-            
-            nodes.filter(n => n.type === 'book').forEach(book => {
-                let matchCount = 0;
-                let matchedKeywords = [];
-                book.keywords.forEach(kw => {
-                    if (worryText.includes(kw)) {
-                        matchCount++;
-                        matchedKeywords.push(kw);
-                    }
-                });
-                
-                if (matchCount > 0) {
-                    book.isHighlighted = true;
-                    book.highlightLevel = 1; 
-                    matchedBooks.push({ node: book, title: book.label, keywords: matchedKeywords });
-                }
-            });
-
-            matchedBooks.forEach(b => {
-                b.keywords.forEach(kw => {
-                    const kwNode = nodes.find(n => n.id === "kw-" + kw);
-                    if (kwNode) {
-                        kwNode.isHighlighted = true;
-                        kwNode.highlightLevel = 2;
-                    }
-                });
-            });
-
-            links.forEach(l => {
-                const sourceNode = typeof l.source === 'object' ? l.source : nodes.find(n => n.id === l.source);
-                const targetNode = typeof l.target === 'object' ? l.target : nodes.find(n => n.id === l.target);
-                if (sourceNode && targetNode && sourceNode.isHighlighted && targetNode.isHighlighted) {
-                    l.isHighlighted = true;
-                }
-            });
-
-            const rNode = nodes.find(n => n.id === 'root');
-            if(rNode) { rNode.isHighlighted = true; rNode.highlightLevel = 3; }
-
-            Graph
-                .nodeThreeObject(Graph.nodeThreeObject())
-                .linkColor(Graph.linkColor())
-                .linkWidth(Graph.linkWidth())
-                .linkDirectionalParticles(Graph.linkDirectionalParticles())
-                .linkDirectionalParticleWidth(Graph.linkDirectionalParticleWidth())
-                .linkDirectionalParticleColor(Graph.linkDirectionalParticleColor());
-
-            if (matchedBooks.length > 0) {
-                const target = matchedBooks[0].node;
-                setTimeout(() => {
-                    if (target.x !== undefined) {
-                        const distRatio = 1 + 120 / Math.hypot(target.x, target.y, target.z);
-                        Graph.cameraPosition(
-                            { x: target.x * distRatio, y: target.y * distRatio, z: target.z * distRatio }, 
-                            target, 
-                            2000
-                        );
-                    }
-                }, 300);
-            }
-
-            const resultContainer = document.getElementById('result-container');
-            if (matchedBooks.length > 0) {
-                let html = '<div class="result-message">✨ 宇宙のこの領域が反応しました</div>';
-                matchedBooks.forEach(b => {
-                    html += `
-                        <div class="result-book">
-                            <div class="result-book-title">📘 ${b.title}</div>
-                            <div class="result-book-keywords">反応: ${b.keywords.join(', ')}</div>
-                        </div>
-                    `;
-                });
-                resultContainer.innerHTML = html;
-                resultContainer.style.display = 'block';
-            } else {
-                resultContainer.innerHTML = '<div class="result-message" style="color:#94a3b8;">共鳴する知識がありませんでした。新しい星（本）を追加してみましょう。</div>';
-                resultContainer.style.display = 'block';
-            }
-        });
-
-        document.getElementById('clear-btn').addEventListener('click', () => {
-            document.getElementById('worry-input').value = '';
-            clearHighlights();
-            Graph.cameraPosition({ x: 0, y: 0, z: 400 }, { x:0, y:0, z:0 }, 2000);
-        });
-
-        function clearHighlights() {
-            nodes.forEach(n => { n.isHighlighted = false; n.highlightLevel = 0; });
-            links.forEach(l => { l.isHighlighted = false; });
-            
-            const rNode = nodes.find(n => n.id === 'root');
-            if(rNode) { rNode.isHighlighted = true; rNode.highlightLevel = 3; }
-
-            Graph
-                .nodeThreeObject(Graph.nodeThreeObject())
-                .linkColor(Graph.linkColor())
-                .linkWidth(Graph.linkWidth())
-                .linkDirectionalParticles(Graph.linkDirectionalParticles())
-                .linkDirectionalParticleWidth(Graph.linkDirectionalParticleWidth())
-                .linkDirectionalParticleColor(Graph.linkDirectionalParticleColor());
-                
-            document.getElementById('result-container').style.display = 'none';
-        }
-
+        // ウィンドウリサイズ対応
         window.addEventListener('resize', () => {
-            Graph.width(window.innerWidth).height(window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
+
     </script>
 </body>
 </html>
