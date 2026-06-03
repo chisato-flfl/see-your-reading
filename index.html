@@ -373,10 +373,11 @@
                 group.add(spriteText);
 
                 return group;
-            })
-            // 力学シミュレーションの調整
-            .d3Force('charge', d3.forceManyBody().strength(-150))
-            .d3Force('link', d3.forceLink().distance(60));
+            });
+            
+        // 力学シミュレーションの調整
+        Graph.d3Force('charge').strength(-150);
+        Graph.d3Force('link').distance(60);
 
         // 宇宙背景（星屑パーティクル）の追加
         const scene = Graph.scene();
