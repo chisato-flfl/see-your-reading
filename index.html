@@ -3,20 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>知識の地図 v2 - See Your Reading</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <title>知識宇宙 Knowledge Cosmos - See Your Reading</title>
+    <!-- Three.js -->
+    <script src="https://unpkg.com/three"></script>
+    <!-- 3D Force Graph -->
+    <script src="https://unpkg.com/3d-force-graph"></script>
+    <!-- SpriteText for labels -->
+    <script src="https://unpkg.com/three-spritetext"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Noto+Sans+JP:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0b0c10;
-            --panel-bg: rgba(25, 28, 36, 0.7);
-            --text-color: #c5c6c7;
-            --primary-color: #66fcf1;
-            --secondary-color: #45a29e;
-            --book-color: #8b5cf6; /* 紫系 */
-            --keyword-color: #3b82f6; /* 青系 */
-            --highlight-book: #d946ef; /* 強いピンク紫 */
-            --highlight-kw: #60a5fa; /* 強い青 */
+            --bg-color: #020205;
+            --panel-bg: rgba(10, 12, 20, 0.75);
+            --text-color: #e2e8f0;
+            --primary-color: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.5);
+            --book-color: #c084fc; 
+            --keyword-color: #67e8f9; 
+            --highlight-book: #f472b6; 
+            --highlight-kw: #38bdf8; 
+            --panel-border: rgba(255, 255, 255, 0.08);
         }
 
         * {
@@ -27,7 +33,6 @@
 
         body {
             background-color: var(--bg-color);
-            background-image: radial-gradient(circle at 50% 50%, #1a1e29 0%, #0b0c10 100%);
             color: var(--text-color);
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
             overflow: hidden;
@@ -41,138 +46,134 @@
             left: 20px;
             z-index: 10;
             background: var(--panel-bg);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             padding: 24px;
             border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--panel-border);
             width: 320px;
             max-height: calc(100vh - 40px);
             overflow-y: auto;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.1);
             transition: all 0.3s ease;
             scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
         }
 
-        #ui-container::-webkit-scrollbar {
-            width: 6px;
-        }
-        #ui-container::-webkit-scrollbar-track {
-            background: transparent;
-        }
+        #ui-container::-webkit-scrollbar { width: 6px; }
+        #ui-container::-webkit-scrollbar-track { background: transparent; }
         #ui-container::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 3px;
         }
 
         h1 {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             color: #fff;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             font-weight: 600;
             letter-spacing: 0.05em;
+            text-shadow: 0 0 10px var(--primary-glow);
         }
 
         h2 {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             color: #fff;
             margin-bottom: 12px;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+        h2::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 8px var(--primary-color);
         }
 
         p.desc {
             font-size: 0.85rem;
-            color: #aaa;
+            color: #94a3b8;
             margin-bottom: 20px;
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
         hr {
             border: none;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid var(--panel-border);
             margin: 24px 0;
         }
 
-        .form-group {
-            margin-bottom: 16px;
-        }
-
+        .form-group { margin-bottom: 16px; }
         label {
             display: block;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             margin-bottom: 6px;
-            color: #ddd;
+            color: #cbd5e1;
         }
 
         input, textarea {
             width: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             color: #fff;
             padding: 10px 12px;
             border-radius: 8px;
             font-family: inherit;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            transition: all 0.3s;
         }
-
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
+        textarea { resize: vertical; min-height: 80px; }
         input:focus, textarea:focus {
             border-color: var(--primary-color);
-            box-shadow: 0 0 8px rgba(102, 252, 241, 0.3);
+            box-shadow: 0 0 10px var(--primary-glow);
+            background: rgba(0, 0, 0, 0.6);
         }
-
-        input::placeholder, textarea::placeholder {
-            color: rgba(255, 255, 255, 0.3);
-        }
+        input::placeholder, textarea::placeholder { color: #475569; }
 
         button {
             width: 100%;
-            background: linear-gradient(135deg, var(--book-color), var(--keyword-color));
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.8), rgba(56, 189, 248, 0.8));
             color: white;
-            border: none;
+            border: 1px solid rgba(255,255,255,0.1);
             padding: 12px;
             border-radius: 8px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.3s;
             margin-top: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+            background: linear-gradient(135deg, rgba(139, 92, 246, 1), rgba(56, 189, 248, 1));
         }
+        button:active { transform: translateY(0); }
 
-        button:active {
-            transform: translateY(0);
-        }
-
-        .btn-consult {
-            background: linear-gradient(135deg, #d946ef, #60a5fa);
-        }
-        
+        .btn-consult { background: linear-gradient(135deg, rgba(236, 72, 153, 0.8), rgba(139, 92, 246, 0.8)); }
         .btn-consult:hover {
-            box-shadow: 0 4px 12px rgba(217, 70, 239, 0.4);
+            box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4);
+            background: linear-gradient(135deg, rgba(236, 72, 153, 1), rgba(139, 92, 246, 1));
         }
 
         .result-box {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--panel-border);
             border-radius: 8px;
             padding: 12px;
             margin-top: 16px;
         }
 
         .result-message {
-            font-size: 0.9rem;
-            color: var(--primary-color);
+            font-size: 0.85rem;
+            color: var(--highlight-book);
             margin-bottom: 12px;
             font-weight: 600;
         }
@@ -182,22 +183,14 @@
             padding-bottom: 10px;
             border-bottom: 1px dashed rgba(255,255,255,0.1);
         }
-        .result-book:last-child {
-            margin-bottom: 0;
-            padding-bottom: 0;
-            border-bottom: none;
-        }
-
+        .result-book:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
         .result-book-title {
             font-weight: 600;
             color: #fff;
             font-size: 0.95rem;
             margin-bottom: 4px;
         }
-        .result-book-keywords {
-            font-size: 0.8rem;
-            color: #aaa;
-        }
+        .result-book-keywords { font-size: 0.75rem; color: #94a3b8; }
 
         #canvas-container {
             position: absolute;
@@ -208,74 +201,56 @@
             z-index: 1;
         }
 
-        /* D3.js グラフのスタイル */
-        .node circle {
-            stroke: #fff;
-            stroke-width: 1.5px;
-            transition: all 0.3s ease;
-        }
-
-        .node text {
-            font-family: 'Inter', 'Noto Sans JP', sans-serif;
-            pointer-events: none;
-            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-            fill: #fff;
-            transition: all 0.3s ease;
-        }
-
-        .link {
-            stroke: rgba(255, 255, 255, 0.2);
-            stroke-opacity: 0.6;
-            transition: stroke-opacity 0.3s ease;
-        }
-
-        /* 凡例 */
-        .legend {
-            margin-top: 24px;
-            font-size: 0.8rem;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 8px;
-        }
+        .legend { margin-top: 24px; font-size: 0.8rem; }
+        .legend-item { display: flex; align-items: center; margin-bottom: 8px; }
         .legend-color {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 8px;
+            width: 10px; height: 10px; border-radius: 50%; margin-right: 8px;
         }
         .legend-book { background-color: var(--book-color); box-shadow: 0 0 8px var(--book-color); }
         .legend-keyword { background-color: var(--keyword-color); box-shadow: 0 0 8px var(--keyword-color); }
+
+        /* ヒント表示時のコントロール用オーバーレイ */
+        #view-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+            color: #aaa;
+            backdrop-filter: blur(5px);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
     <div id="ui-container">
-        <h1>知識の地図 v2</h1>
-        <p class="desc">読んだ本とキーワードをつなぎ、<br>思考の広がりを可視化します。</p>
+        <h1>Knowledge Cosmos</h1>
+        <p class="desc">あなたの読書記録が星となり、<br>広大な知識の宇宙を形成します。</p>
 
-        <!-- モヤモヤ相談機能 (v2 新機能) -->
         <div class="consult-section">
-            <h2>💭 モヤモヤ相談</h2>
-            <p class="desc" style="margin-bottom: 12px;">今の悩みや考えていることを入力すると、過去の読書知識からヒントを探します。</p>
+            <h2>モヤモヤ探索</h2>
+            <p class="desc" style="margin-bottom: 12px; font-size: 0.75rem;">今の悩みや思考を入力し、宇宙からヒントとなる繋がりを発見します。</p>
             <div class="form-group">
-                <textarea id="worry-input" placeholder="例: 将来のキャリアについて悩んでいる。自分らしく生きたいが、社会の枠組みに縛られている気がする..."></textarea>
+                <textarea id="worry-input" placeholder="例: 働き方について悩んでいる。新しい視点が欲しい..."></textarea>
             </div>
-            <button id="consult-btn" class="btn-consult">ヒントを探す</button>
-            <button id="clear-btn" style="background: rgba(255,255,255,0.1); margin-top: 8px; font-size: 0.9rem; padding: 8px;">クリア</button>
+            <button id="consult-btn" class="btn-consult">宇宙に問いかける</button>
+            <button id="clear-btn" style="background: rgba(255,255,255,0.05); color:#aaa; margin-top: 8px; font-size: 0.85rem; padding: 10px; border:none; box-shadow:none;">探索をリセット</button>
             
-            <div id="result-container" class="result-box" style="display: none;">
-                <!-- 結果がここに表示される -->
-            </div>
+            <div id="result-container" class="result-box" style="display: none;"></div>
         </div>
 
         <hr>
 
         <form id="add-form">
-            <h2>📚 本の追加</h2>
+            <h2>知識の種を追加</h2>
             <div class="form-group">
-                <label for="book-title">本のタイトル (既存の本を選ぶとキーワードを追加)</label>
+                <label for="book-title">本のタイトル (既存の星へキーワードを追加可能)</label>
                 <input type="text" id="book-title" list="book-list" placeholder="例: サピエンス全史" required autocomplete="off">
                 <datalist id="book-list"></datalist>
             </div>
@@ -283,182 +258,178 @@
                 <label for="keywords">キーワード（カンマ区切り）</label>
                 <input type="text" id="keywords" placeholder="例: 歴史, 人類, 認知革命" required autocomplete="off">
             </div>
-            <button type="submit">本・キーワードを追加</button>
+            <button type="submit">宇宙へ放つ</button>
         </form>
 
         <div class="legend">
             <div class="legend-item">
                 <div class="legend-color legend-book"></div>
-                <span>本 (Book)</span>
+                <span>本 (Knowledge Core)</span>
             </div>
             <div class="legend-item">
                 <div class="legend-color legend-keyword"></div>
-                <span>キーワード (Keyword)</span>
+                <span>キーワード (Knowledge Node)</span>
             </div>
         </div>
     </div>
 
+    <div id="view-controls">ドラッグで視点移動 / スクロールでズーム</div>
     <div id="canvas-container"></div>
 
     <script>
         // データ構造
-        const nodes = [];
-        const links = [];
+        let nodes = [];
+        let links = [];
 
-        // v2: 指定された初期データ
+        // 初期データ
         const initialData = [
             { title: "嫌われる勇気", keywords: ["自己理解", "心理学", "哲学"] },
             { title: "LIFE SHIFT", keywords: ["人生", "働き方", "自己理解"] },
             { title: "人新世の資本論", keywords: ["社会", "資本主義", "哲学"] }
         ];
 
-        // グラフ設定
-        const container = document.getElementById('canvas-container');
-        let width = container.clientWidth;
-        let height = container.clientHeight;
+        // ぼかしテクスチャの生成関数（エネルギー球用）
+        function createGlowTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+            gradient.addColorStop(0.5, 'rgba(255,255,255,0.2)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 128, 128);
+            const texture = new THREE.Texture(canvas);
+            texture.needsUpdate = true;
+            return texture;
+        }
+        const glowTexture = createGlowTexture();
 
-        const svg = d3.select("#canvas-container").append("svg")
-            .attr("width", width)
-            .attr("height", height);
+        // 3Dグラフ初期化
+        const elem = document.getElementById('canvas-container');
+        const Graph = ForceGraph3D()(elem)
+            .backgroundColor('#020205')
+            .showNavInfo(false)
+            // リンク設定
+            .linkWidth(d => d.isHighlighted ? 1.5 : 0.3)
+            .linkColor(d => d.isHighlighted ? 'rgba(255, 255, 255, 0.8)' : 'rgba(100, 149, 237, 0.15)')
+            .linkOpacity(1)
+            // リンク上の光の粒子（エネルギーの流れ）
+            .linkDirectionalParticles(d => d.isHighlighted ? 4 : 1)
+            .linkDirectionalParticleWidth(d => d.isHighlighted ? 2.5 : 1)
+            .linkDirectionalParticleSpeed(d => d.isHighlighted ? 0.01 : 0.002)
+            .linkDirectionalParticleColor(d => d.isHighlighted ? '#f472b6' : '#67e8f9')
+            // ノードのカスタム描画
+            .nodeThreeObject(node => {
+                const group = new THREE.Group();
 
-        // コンテナグループ（ズーム/パン用）
-        const g = svg.append("g");
-
-        // ズーム機能
-        const zoom = d3.zoom()
-            .scaleExtent([0.1, 4])
-            .on("zoom", (event) => {
-                g.attr("transform", event.transform);
-            });
-        svg.call(zoom);
-
-        // シミュレーション設定（ふわふわ動く）
-        const simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links).id(d => d.id).distance(100))
-            .force("charge", d3.forceManyBody().strength(-300))
-            .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collide", d3.forceCollide().radius(d => d.radius + 5).iterations(2))
-            // 常に微弱な動きを維持するための設定
-            .alphaDecay(0.01) 
-            .velocityDecay(0.6);
-
-        let linkGroup = g.append("g").attr("class", "links");
-        let nodeGroup = g.append("g").attr("class", "nodes");
-
-        // 描画更新関数
-        function updateGraph() {
-            // リンクの更新
-            const linkSelection = linkGroup.selectAll("line").data(links);
-            
-            const linkEnter = linkSelection.enter().append("line")
-                .attr("class", "link")
-                .style("stroke-width", d => Math.sqrt(d.value || 1));
-
-            linkSelection.exit().remove();
-            const link = linkEnter.merge(linkSelection);
-            
-            // ハイライト時のリンクの透明度
-            link.style("stroke-opacity", d => {
-                const anyHighlighted = nodes.some(n => n.isHighlighted);
-                if (anyHighlighted) {
-                    if (d.source.isHighlighted && d.target.isHighlighted) return 0.9;
-                    return 0.1;
+                const isHighlighted = node.isHighlighted;
+                const isBook = node.type === 'book';
+                
+                // 色の設定
+                let color = isBook ? '#c084fc' : '#67e8f9';
+                if (isHighlighted) {
+                    // ハイライトレベルによる色の波及効果
+                    if (node.highlightLevel === 1) color = '#f472b6'; // 直接マッチ
+                    else if (node.highlightLevel === 2) color = '#38bdf8'; // 隣接マッチ
+                    else color = '#ffffff';
                 }
-                return 0.6;
+
+                // リンク数に基づいてサイズを決定
+                const connections = links.filter(l => l.source === node.id || l.target === node.id || l.source.id === node.id || l.target.id === node.id).length;
+                let baseSize = isBook ? 12 : 5;
+                let scale = baseSize + connections * (isBook ? 1.5 : 0.8);
+                if (isHighlighted) scale *= 1.3;
+
+                // 光る球体 (Sprite)
+                const material = new THREE.SpriteMaterial({ 
+                    map: glowTexture, 
+                    color: color, 
+                    transparent: true, 
+                    blending: THREE.AdditiveBlending,
+                    opacity: isHighlighted ? 1 : 0.6
+                });
+                const sprite = new THREE.Sprite(material);
+                sprite.scale.set(scale, scale, 1);
+                
+                // 呼吸エフェクト用のアニメーション変数を保持
+                sprite.userData = { 
+                    baseScale: scale,
+                    phase: Math.random() * Math.PI * 2,
+                    speed: isBook ? 0.02 : 0.03
+                };
+                group.add(sprite);
+                node.__sprite = sprite; // 参照を保持
+
+                // テキストラベル
+                const spriteText = new SpriteText(node.label);
+                spriteText.color = isHighlighted ? '#ffffff' : (isBook ? '#e2e8f0' : '#94a3b8');
+                spriteText.textHeight = isBook ? 3 : 2;
+                spriteText.position.y = -(scale / 3) - 2;
+                spriteText.material.transparent = true;
+                spriteText.material.opacity = isHighlighted ? 1 : 0.7;
+                group.add(spriteText);
+
+                return group;
             })
-            .style("stroke", d => {
-                const anyHighlighted = nodes.some(n => n.isHighlighted);
-                if (anyHighlighted && d.source.isHighlighted && d.target.isHighlighted) return "#fff";
-                return "rgba(255, 255, 255, 0.2)";
+            // 力学シミュレーションの調整
+            .d3Force('charge', d3.forceManyBody().strength(-150))
+            .d3Force('link', d3.forceLink().distance(60));
+
+        // 宇宙背景（星屑パーティクル）の追加
+        const scene = Graph.scene();
+        const starGeo = new THREE.BufferGeometry();
+        const starCount = 3000;
+        const positions = new Float32Array(starCount * 3);
+        const colors = new Float32Array(starCount * 3);
+        const color = new THREE.Color();
+
+        for(let i=0; i<starCount; i++) {
+            positions[i*3] = (Math.random() - 0.5) * 2000;
+            positions[i*3+1] = (Math.random() - 0.5) * 2000;
+            positions[i*3+2] = (Math.random() - 0.5) * 2000;
+
+            color.setHSL(Math.random() * 0.2 + 0.5, 0.8, Math.random() * 0.5 + 0.5); // 青〜紫系の星
+            colors[i*3] = color.r;
+            colors[i*3+1] = color.g;
+            colors[i*3+2] = color.b;
+        }
+
+        starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        starGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const starMat = new THREE.PointsMaterial({
+            size: 1.5,
+            vertexColors: true,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        const stars = new THREE.Points(starGeo, starMat);
+        scene.add(stars);
+
+        // 呼吸アニメーションと星の回転ループ
+        let time = 0;
+        Graph.onEngineTick(() => {
+            time += 1;
+            stars.rotation.y += 0.0002;
+            stars.rotation.x += 0.0001;
+
+            // ノードの鼓動エフェクト
+            nodes.forEach(node => {
+                if (node.__sprite) {
+                    const ud = node.__sprite.userData;
+                    const pulse = Math.sin(time * ud.speed + ud.phase) * 0.1 + 1;
+                    const newScale = ud.baseScale * pulse;
+                    node.__sprite.scale.set(newScale, newScale, 1);
+                }
             });
+        });
 
-            // ノードの更新
-            const nodeSelection = nodeGroup.selectAll(".node").data(nodes, d => d.id);
-            
-            const nodeEnter = nodeSelection.enter().append("g")
-                .attr("class", "node")
-                .call(d3.drag()
-                    .on("start", dragstarted)
-                    .on("drag", dragged)
-                    .on("end", dragended));
-
-            // ノードの円
-            nodeEnter.append("circle");
-
-            // ノードのテキスト
-            nodeEnter.append("text")
-                .attr("dx", 0)
-                .attr("text-anchor", "middle");
-
-            nodeSelection.exit().remove();
-            const node = nodeEnter.merge(nodeSelection);
-
-            // 円のスタイル更新 (ハイライト状態を反映)
-            node.select("circle")
-                .attr("r", d => d.isHighlighted ? d.radius * 1.3 : d.radius)
-                .attr("fill", d => {
-                    if (d.type === "book") return d.isHighlighted ? "var(--highlight-book)" : "var(--book-color)";
-                    return d.isHighlighted ? "var(--highlight-kw)" : "var(--keyword-color)";
-                })
-                .style("filter", d => {
-                    if (d.isHighlighted) {
-                        return `drop-shadow(0 0 20px ${d.type === "book" ? "var(--highlight-book)" : "var(--highlight-kw)"})`;
-                    }
-                    return `drop-shadow(0 0 8px ${d.type === "book" ? "rgba(139, 92, 246, 0.6)" : "rgba(59, 130, 246, 0.6)"})`;
-                })
-                .style("opacity", d => {
-                    const anyHighlighted = nodes.some(n => n.isHighlighted);
-                    if (anyHighlighted && !d.isHighlighted) return 0.2;
-                    return 1;
-                });
-
-            // テキストのスタイル更新
-            node.select("text")
-                .attr("dy", d => (d.isHighlighted ? d.radius * 1.3 : d.radius) + 15)
-                .text(d => d.label)
-                .style("font-size", d => d.type === "book" ? "14px" : "12px")
-                .style("font-weight", d => d.isHighlighted || d.type === "book" ? "600" : "400")
-                .style("opacity", d => {
-                    const anyHighlighted = nodes.some(n => n.isHighlighted);
-                    if (anyHighlighted && !d.isHighlighted) return 0.2;
-                    return 1;
-                });
-
-            // シミュレーションの更新
-            simulation.nodes(nodes).on("tick", () => {
-                link
-                    .attr("x1", d => d.source.x)
-                    .attr("y1", d => d.source.y)
-                    .attr("x2", d => d.target.x)
-                    .attr("y2", d => d.target.y);
-
-                node
-                    .attr("transform", d => `translate(${d.x},${d.y})`);
-            });
-
-            simulation.force("link").links(links);
-            simulation.alpha(0.3).restart();
-        }
-
-        // ドラッグイベントハンドラ
-        function dragstarted(event, d) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-        }
-
-        function dragged(event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        }
-
-        function dragended(event, d) {
-            if (!event.active) simulation.alphaTarget(0.05);
-            d.fx = null;
-            d.fy = null;
-        }
-
-        // 既存の本のリストを更新する関数
+        // データ追加・更新ロジック
         function updateBookList() {
             const dataList = document.getElementById('book-list');
             dataList.innerHTML = '';
@@ -469,50 +440,39 @@
             });
         }
 
-        // データ追加処理
         function addData(title, keywordsStr) {
-            const keywords = keywordsStr.split(',').map(k => k.trim()).filter(k => k !== "");
-            
-            if (keywords.length === 0) return;
+            const kws = keywordsStr.split(',').map(k => k.trim()).filter(k => k !== "");
+            if (kws.length === 0) return;
 
-            // 本ノードの追加または取得
             let bookNode = nodes.find(n => n.id === "book-" + title);
             if (!bookNode) {
                 bookNode = { 
                     id: "book-" + title, 
                     label: title, 
                     type: "book", 
-                    radius: 20,
-                    x: width / 2 + (Math.random() - 0.5) * 100,
-                    y: height / 2 + (Math.random() - 0.5) * 100,
                     keywords: [],
                     isHighlighted: false
                 };
                 nodes.push(bookNode);
-                updateBookList(); // 本のリストを更新
+                updateBookList();
             }
 
-            keywords.forEach(kw => {
+            kws.forEach(kw => {
                 if (!bookNode.keywords.includes(kw)) {
                     bookNode.keywords.push(kw);
                 }
 
-                // キーワードノードの追加または取得
                 let kwNode = nodes.find(n => n.id === "kw-" + kw);
                 if (!kwNode) {
                     kwNode = { 
                         id: "kw-" + kw, 
                         label: kw, 
                         type: "keyword", 
-                        radius: 12,
-                        x: width / 2 + (Math.random() - 0.5) * 100,
-                        y: height / 2 + (Math.random() - 0.5) * 100,
                         isHighlighted: false
                     };
                     nodes.push(kwNode);
                 }
 
-                // リンクの追加
                 const linkExists = links.find(l => 
                     (l.source.id === bookNode.id && l.target.id === kwNode.id) ||
                     (l.source === bookNode.id && l.target === kwNode.id)
@@ -523,23 +483,25 @@
                 }
             });
 
-            updateGraph();
+            // 3d-force-graph は新しいオブジェクト参照を要求する
+            Graph.graphData({ nodes: [...nodes], links: [...links] });
         }
 
-        // フォーム送信イベント (本の追加)
+        // 初期データの読み込み
+        initialData.forEach(data => addData(data.title, data.keywords.join(', ')));
+
+        // 本の追加イベント
         document.getElementById('add-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const titleInput = document.getElementById('book-title');
             const keywordsInput = document.getElementById('keywords');
-            
             addData(titleInput.value, keywordsInput.value);
-            
             titleInput.value = '';
             keywordsInput.value = '';
             titleInput.focus();
         });
 
-        // モヤモヤ相談の実行
+        // モヤモヤ探索（連鎖発光ロジック）
         document.getElementById('consult-btn').addEventListener('click', () => {
             const worryText = document.getElementById('worry-input').value;
             const resultContainer = document.getElementById('result-container');
@@ -549,88 +511,118 @@
                 return;
             }
 
+            // 状態リセット
+            nodes.forEach(n => { n.isHighlighted = false; n.highlightLevel = 0; });
+            links.forEach(l => { l.isHighlighted = false; });
+            
             let matchedBooks = [];
             
-            // 本のキーワードと悩みを照合
+            // 1. 本の直接マッチング
             nodes.filter(n => n.type === 'book').forEach(book => {
                 let matchCount = 0;
                 let matchedKeywords = [];
-                
                 book.keywords.forEach(kw => {
-                    // 単純な部分一致
                     if (worryText.includes(kw)) {
                         matchCount++;
                         matchedKeywords.push(kw);
                     }
                 });
                 
-                book.isHighlighted = matchCount > 0;
                 if (matchCount > 0) {
-                    matchedBooks.push({ title: book.label, keywords: matchedKeywords });
+                    book.isHighlighted = true;
+                    book.highlightLevel = 1; // 強い光
+                    matchedBooks.push({ node: book, title: book.label, keywords: matchedKeywords });
                 }
             });
 
-            // キーワードノードもハイライト
-            nodes.filter(n => n.type === 'keyword').forEach(kwNode => {
-                kwNode.isHighlighted = worryText.includes(kwNode.label);
+            // 2. 波及効果（マッチした本のキーワードノードを光らせる）
+            matchedBooks.forEach(b => {
+                b.keywords.forEach(kw => {
+                    const kwNode = nodes.find(n => n.id === "kw-" + kw);
+                    if (kwNode) {
+                        kwNode.isHighlighted = true;
+                        kwNode.highlightLevel = 2; // 少し弱い光
+                    }
+                });
             });
 
-            updateGraph();
+            // 3. リンクのハイライト（両端がハイライトされていれば光る）
+            links.forEach(l => {
+                const sourceNode = typeof l.source === 'object' ? l.source : nodes.find(n => n.id === l.source);
+                const targetNode = typeof l.target === 'object' ? l.target : nodes.find(n => n.id === l.target);
+                if (sourceNode && targetNode && sourceNode.isHighlighted && targetNode.isHighlighted) {
+                    l.isHighlighted = true;
+                }
+            });
 
-            // 結果UIの表示
+            // 描画更新
+            Graph
+                .nodeThreeObject(Graph.nodeThreeObject()) // 再評価
+                .linkColor(Graph.linkColor())
+                .linkWidth(Graph.linkWidth())
+                .linkDirectionalParticles(Graph.linkDirectionalParticles())
+                .linkDirectionalParticleWidth(Graph.linkDirectionalParticleWidth());
+
+            // カメラ移動（最初のヒット本へフォーカス）
             if (matchedBooks.length > 0) {
-                let html = '<div class="result-message">✨ この本がヒントになるかもしれません</div>';
+                const target = matchedBooks[0].node;
+                // シミュレーションが落ち着くのを少し待ってから移動
+                setTimeout(() => {
+                    if (target.x !== undefined) {
+                        const distRatio = 1 + 120 / Math.hypot(target.x, target.y, target.z);
+                        Graph.cameraPosition(
+                            { x: target.x * distRatio, y: target.y * distRatio, z: target.z * distRatio }, 
+                            target, 
+                            2000 // アニメーション時間
+                        );
+                    }
+                }, 300);
+            }
+
+            // UI結果表示
+            if (matchedBooks.length > 0) {
+                let html = '<div class="result-message">✨ 宇宙のこの領域が反応しました</div>';
                 matchedBooks.forEach(b => {
                     html += `
                         <div class="result-book">
                             <div class="result-book-title">📘 ${b.title}</div>
-                            <div class="result-book-keywords">関連キーワード: ${b.keywords.join(', ')}</div>
+                            <div class="result-book-keywords">反応: ${b.keywords.join(', ')}</div>
                         </div>
                     `;
                 });
                 resultContainer.innerHTML = html;
                 resultContainer.style.display = 'block';
             } else {
-                resultContainer.innerHTML = '<div class="result-message" style="color:#aaa;">直接関連する本は見つかりませんでしたが、新しい本を追加してみましょう。</div>';
+                resultContainer.innerHTML = '<div class="result-message" style="color:#94a3b8;">共鳴する知識がありませんでした。新しい星（本）を追加してみましょう。</div>';
                 resultContainer.style.display = 'block';
             }
         });
 
-        // クリアボタン
         document.getElementById('clear-btn').addEventListener('click', () => {
             document.getElementById('worry-input').value = '';
             clearHighlights();
+            // カメラを少し遠ざける
+            Graph.cameraPosition({ x: 0, y: 0, z: 300 }, { x:0, y:0, z:0 }, 2000);
         });
 
         function clearHighlights() {
-            nodes.forEach(n => n.isHighlighted = false);
-            updateGraph();
+            nodes.forEach(n => { n.isHighlighted = false; n.highlightLevel = 0; });
+            links.forEach(l => { l.isHighlighted = false; });
+            
+            Graph
+                .nodeThreeObject(Graph.nodeThreeObject())
+                .linkColor(Graph.linkColor())
+                .linkWidth(Graph.linkWidth())
+                .linkDirectionalParticles(Graph.linkDirectionalParticles())
+                .linkDirectionalParticleWidth(Graph.linkDirectionalParticleWidth());
+                
             document.getElementById('result-container').style.display = 'none';
         }
 
         // ウィンドウリサイズ対応
         window.addEventListener('resize', () => {
-            width = container.clientWidth;
-            height = container.clientHeight;
-            svg.attr("width", width).attr("height", height);
-            simulation.force("center", d3.forceCenter(width / 2, height / 2));
-            simulation.alpha(0.3).restart();
+            Graph.width(window.innerWidth).height(window.innerHeight);
         });
-
-        // 初期データの読み込み
-        initialData.forEach(data => {
-            addData(data.title, data.keywords.join(', '));
-        });
-
-        // ふわふわ感を強調するための定期的な微力追加
-        setInterval(() => {
-            nodes.forEach(node => {
-                node.vx += (Math.random() - 0.5) * 0.5;
-                node.vy += (Math.random() - 0.5) * 0.5;
-            });
-            simulation.alpha(0.1).restart();
-        }, 3000);
-
     </script>
 </body>
 </html>
